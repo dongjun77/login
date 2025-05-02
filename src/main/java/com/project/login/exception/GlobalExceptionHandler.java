@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "잘못된 요청입니다: " + errorMessage);
     }
 
-    @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class})
+    @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class, AlreadyLoggedInException.class})
     public ResponseEntity<ApiErrorResponse> handleLoginExceptions(RuntimeException ex) {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }

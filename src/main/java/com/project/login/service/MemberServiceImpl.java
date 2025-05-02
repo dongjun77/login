@@ -9,16 +9,20 @@ import com.project.login.dto.LoginRequestDTO;
 import com.project.login.dto.LoginResponseDTO;
 import com.project.login.dto.RefreshRequestDTO;
 import com.project.login.dto.RefreshResponseDTO;
+import com.project.login.exception.AlreadyLoggedInException;
 import com.project.login.exception.EmailAlreadyUsedException;
 import com.project.login.exception.InvalidRefreshTokenException;
 import com.project.login.repository.MemberRepository;
 import com.project.login.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+@Log4j2
 @Service
 @RequiredArgsConstructor
 public class MemberServiceImpl implements MemberService {
@@ -27,6 +31,7 @@ public class MemberServiceImpl implements MemberService {
     private final PasswordEncoder passwordEncoder;
     private final JWTUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
+    private final RedisTemplate redisTemplate;
 
     @Override
     public JoinResponseDTO join(JoinRequestDTO dto) {
@@ -51,6 +56,7 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public LoginResponseDTO login(LoginRequestDTO dto) {
+
         Member member = memberRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 이메일입니다."));
 
@@ -58,11 +64,10 @@ public class MemberServiceImpl implements MemberService {
             throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
         }
 
-        System.out.println("비밀번호 일치");
-
         String accessToken = jwtUtil.generateAccessToken(member);
         String refreshToken = jwtUtil.generateRefreshToken(member);
 
+        // 중복 로그인 방지를 위해 setIfAbsent 방식으로 저장
         refreshTokenService.save(member.getEmail(), refreshToken, jwtUtil.getRefreshTokenExpireMs());
 
         return new LoginResponseDTO(accessToken, refreshToken);
